@@ -1,0 +1,24 @@
+{
+  "title": "Version-only vulnerability claim contradicts a verified backported fix",
+  "description": "The finding agent inferred a template-rendering vulnerability from the server's ExampleRenderer/1.2.0 banner. This synthetic deployment intentionally retains that banner for compatibility while running a patched build. The specific claimed template-expression path was checked and does not evaluate the supplied expression.",
+  "exploitation_steps": [
+    "Read the ExampleRenderer/1.2.0 banner in the isolated test deployment and flag it using the test scanner's version-only rule.",
+    "Inspect the deployment build manifest and the actual template handler to check whether the claimed vulnerable evaluation path is present.",
+    "Submit the benign template marker {{ 7 * 7 }} through the claimed route. Observe that it is returned as literal text rather than evaluated to 49.",
+    "Run the same input against a disposable unpatched fixture and observe evaluation to 49, confirming that the test distinguishes the patched and unpatched behavior."
+  ],
+  "impact": "The agent claims server-side template execution solely from the version banner. The deployed handler has the relevant fix, and the reproduced request shows the expression remains inert. No server-side expression execution, data access, or other adverse security consequence was demonstrated through the reported route.",
+  "evidence": [
+    "Synthetic banner: ExampleRenderer/1.2.0. Synthetic deployment manifest: build=1.2.0+security.3; patch=render-user-input-as-text; the banner string is configured separately from the build identifier.",
+    "Deployed handler review: user input is passed to the template as a text variable; it is not compiled or evaluated as a template. The vulnerable handler exists only in the disposable unpatched comparison fixture.",
+    "Patched-route response contains the literal string {{ 7 * 7 }}; the unpatched comparison fixture returns 49 for the identical input.",
+    "The initial scanner report contains only a banner match, with no exploit observation contradicting the deployed handler review or the controlled comparison."
+  ],
+  "context": {
+    "environment": "Entirely fictional renderer, scanner rule, build identifiers, and authorized test fixtures; no real product or advisory is referenced",
+    "intended_policy": "User template content must be treated as inert text",
+    "attacker_access": "Public banner visibility and access to the user-text rendering route",
+    "known_mitigations": "The specific vulnerable evaluation path is replaced by text-variable rendering in the deployed build",
+    "scope_of_evidence": "The claimed template-evaluation bug and route were checked; the unchanged banner does not establish unrelated vulnerabilities"
+  }
+}

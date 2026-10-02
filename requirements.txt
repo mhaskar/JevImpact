@@ -1,0 +1,2 @@
+typesafe-sdk>=0.7.2,<0.8
+pydantic>=2,<3

@@ -1,0 +1,24 @@
+{
+  "title": "Stored XSS executes in another user's support-ticket view",
+  "description": "A regular customer can submit a ticket containing HTML that is stored unchanged. The staff ticket viewer inserts that content into the page as HTML without sanitization, causing customer-controlled JavaScript to execute when a support user views the ticket.",
+  "exploitation_steps": [
+    "In the isolated test application, sign in as customer A and create a support ticket with body <img src=x onerror=\"window.__jevai_xss_marker='ticket-001'\">.",
+    "In a separate browser session, sign in as support user B and open A's ticket through the normal staff interface.",
+    "Observe window.__jevai_xss_marker equal to ticket-001 in B's session. Repeat with an escaped-text control ticket and confirm the marker does not execute."
+  ],
+  "impact": "An ordinary customer can execute JavaScript in a different user's authenticated application origin. The benign marker demonstrates cross-user script execution. Reading session tokens, extracting private records, and performing privileged actions were not tested and are not claimed as demonstrated consequences.",
+  "evidence": [
+    "Synthetic POST /api/tickets by customer A stores the supplied img element verbatim as the ticket body.",
+    "Staff rendering excerpt: ticketBody.innerHTML = ticket.body. No sanitization or output encoding occurs on this path.",
+    "Separate-session observation: user B's page contains the injected img element, and window.__jevai_xss_marker is ticket-001 after rendering. A fresh B session reproduces the result; the escaped-text control does not.",
+    "The test viewer's deployed policy permits inline event handlers. The marker executes without B copying code, disabling protections, or modifying the page locally."
+  ],
+  "context": {
+    "environment": "Synthetic, authorized test application with separate customer and support accounts",
+    "intended_policy": "Customer ticket text must be displayed as inert content and must never execute code in another user's session",
+    "attacker_access": "Regular customer account with permission to create tickets only",
+    "victim_access": "Support user who opens the ticket as part of normal work",
+    "known_mitigations": "Session cookies are HttpOnly, but the deployed viewer permits the demonstrated script execution",
+    "scope_of_evidence": "Only a benign cross-user JavaScript marker was executed; no data was exfiltrated and no privileged operation was attempted"
+  }
+}

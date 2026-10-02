@@ -1,0 +1,28 @@
+{
+  "title": "Blind SSRF reaches an internal service without exposing its response",
+  "description": "The URL-checking feature accepts a user-supplied URL and queues a backend HTTP GET request. The worker does not enforce the intended public-destination restriction, so a regular user can cause it to contact an internal-only service. The worker discards the upstream HTTP status code, headers, and response body. None of those values are returned to the attacker.",
+  "exploitation_steps": [
+    "In the authorized test environment, provision a harmless internal HTTP fixture at http://10.20.0.15:8080/probe. Verify that the application backend can reach it, but the regular user's external client cannot.",
+    "Authenticate as a regular user and submit POST /api/url-check with JSON body {\"url\": \"http://10.20.0.15:8080/probe?marker=ssrf-test-001\"}.",
+    "Use the internal fixture's access log, available to the test operator, to confirm a GET request carrying marker ssrf-test-001 from the application's backend worker.",
+    "Inspect the URL-checking API and its user-visible job records. Observe only a generic queued acknowledgement, with no upstream status code, headers, response body, or request outcome exposed to the submitting user.",
+    "Repeat with the harmless internal fixture unavailable. Observe the same acknowledgement and no user-visible completion result. No exploitable timing or success/failure signal was demonstrated."
+  ],
+  "impact": "A regular user can make the backend send an HTTP GET request to an internal resource that the user cannot directly reach, bypassing the feature's public-destination restriction. The demonstrated consequence is internal request reachability. No internal response content, status code, or headers are disclosed to the attacker. The harmless fixture performs no state-changing action, and no sensitive-data extraction, internal authentication bypass, service disruption, or other downstream compromise has been demonstrated.",
+  "evidence": [
+    "Synthetic request: POST /api/url-check by regular user A; body: {\"url\": \"http://10.20.0.15:8080/probe?marker=ssrf-test-001\"}. User-visible result: {\"queued\": true}, identical whether the fixture is available or unavailable. This acknowledgement describes queue submission, not the internal resource's response.",
+    "Internal fixture access log, visible only to the authorized test operator: source=application-worker, method=GET, path=/probe?marker=ssrf-test-001. The external test client has no route to the fixture.",
+    "Synthetic worker excerpt: url = job['url']; requests.get(url, timeout=3, allow_redirects=False). The response is discarded; exceptions are swallowed; neither outcomes nor elapsed request times are written to user-visible job records. There is no destination-address validation.",
+    "The internal fixture is an unauthenticated, read-only test endpoint. Its operator confirmed that the request caused no application state changes. Evidence of request arrival is supplied by the test operator, not a response or callback available to the attacker."
+  ],
+  "context": {
+    "environment": "Synthetic example in an authorized, isolated test environment; all hosts and routes are fixtures",
+    "intended_policy": "The URL-checking feature must contact public destinations only; internal service access is reserved for trusted backend components",
+    "attacker_access": "Regular authenticated user who can submit a URL but cannot inspect worker logs or internal fixture logs",
+    "request_constraints": "HTTP GET only; no attacker-controlled request body or custom headers; no forwarded user credentials or internal service credentials; redirects disabled",
+    "response_visibility": "No upstream status code, response headers, response body, outcome, or completion notification is exposed to the attacker",
+    "execution": "Asynchronous worker; the generic acknowledgement is returned before the upstream request runs",
+    "known_mitigations": "Worker discards responses and does not forward credentials, but has network access to the internal fixture and no public-destination enforcement",
+    "scope_of_evidence": "Only reachability to this harmless internal fixture was verified. Access to metadata services, privileged endpoints, other ports, or state-changing GET routes was not tested; their existence or exploitability must not be assumed."
+  }
+}

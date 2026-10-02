@@ -1,0 +1,21 @@
+{
+  "title": "Cross-account invoice disclosure",
+  "description": "A regular user can request an invoice belonging to another account because the API checks authentication but does not check invoice ownership.",
+  "exploitation_steps": [
+    "In the authorized test environment, create accounts A and B and an invoice for B.",
+    "Authenticate as A and request B's invoice ID from GET /api/invoices/{id}.",
+    "Observe that the response contains B's invoice despite A having no shared membership or invoice permissions."
+  ],
+  "impact": "A regular user can read another account's billing address and invoice line items.",
+  "evidence": [
+    "Fixture: A is in tenant-a; B and invoice inv-b are in tenant-b; no shared membership exists.",
+    "Request: GET /api/invoices/inv-b with A's session. Response: HTTP 200, {invoice_id: inv-b, tenant_id: tenant-b, billing_address: [test address], line_items: [test items]}.",
+    "Handler excerpt: require_authenticated_user(request); return db.invoices.get(invoice_id). No ownership check is performed."
+  ],
+  "context": {
+    "environment": "Synthetic example in an authorized test environment",
+    "intended_policy": "Invoices are private to their tenant",
+    "attacker_access": "Regular authenticated account",
+    "known_mitigations": "None observed in the test handler"
+  }
+}

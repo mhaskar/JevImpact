@@ -1,0 +1,24 @@
+{
+  "title": "Claimed privilege escalation uses an already authorized tenant administrator",
+  "description": "The finding agent reported privilege escalation after using a tenant-administrator session to promote another member of that same tenant. That operation is explicitly granted to tenant administrators by the application policy. Control requests show that ordinary members cannot perform it and that administrators cannot modify members of other tenants.",
+  "exploitation_steps": [
+    "In the isolated test application, create tenant T1 with administrator A and member B, plus tenant T2 with member C.",
+    "Authenticate as A and submit PATCH /api/tenants/T1/members/B with body {\"role\": \"admin\"}. Observe that B is promoted within T1.",
+    "As ordinary member D of T1, attempt the same promotion. Observe HTTP 403 and no role change.",
+    "As administrator A of T1, attempt to change C's role in T2. Observe HTTP 403 and no role change. Confirm that the tenant promotion does not grant any global platform role."
+  ],
+  "impact": "The agent claims that changing a role proves privilege escalation. The demonstrated change uses permissions administrator A already legitimately holds and is confined to A's tenant. The tested unauthorized member and cross-tenant attempts are rejected, and no additional authority beyond the intended policy is obtained.",
+  "evidence": [
+    "Fixture access policy: tenant administrators may manage member roles in their own tenant; ordinary members may not manage roles; tenant roles confer no global platform privileges.",
+    "Successful request: A, an existing administrator of T1, promotes B within T1. The resulting role record is tenant_id=T1, user_id=B, role=admin.",
+    "Member control: ordinary member D's promotion request returns HTTP 403; B's role is unchanged by that request.",
+    "Cross-tenant control: A's request for T2 member C returns HTTP 403; C's role is unchanged. Authorization checks require an administrator membership in the target tenant."
+  ],
+  "context": {
+    "environment": "Synthetic, authorized test application with isolated tenant fixtures",
+    "intended_policy": "Administrators may assign member and administrator roles within their own tenant only",
+    "attacker_access": "The successful reproduction starts with legitimate administrator rights in T1",
+    "known_mitigations": "Server-side target-tenant membership and administrator checks; tenant roles are separate from global platform roles",
+    "scope_of_evidence": "Only the documented authorized promotion and its member/cross-tenant controls were assessed"
+  }
+}

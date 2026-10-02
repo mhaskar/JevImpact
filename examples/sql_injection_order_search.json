@@ -1,0 +1,24 @@
+{
+  "title": "SQL injection in order search discloses another customer's orders",
+  "description": "An authenticated order-search endpoint builds a SQL query by concatenating a user-supplied order reference. An injected OR predicate changes the query logic so that the customer ownership restriction no longer applies to all returned rows.",
+  "exploitation_steps": [
+    "Create customer A and customer B in the isolated test database, with order-a-001 owned by A and order-b-001 owned by B.",
+    "Sign in as A and search with a normal order reference. Confirm that only A's matching order is returned, and that directly searching for B's reference returns no rows.",
+    "As A, submit the order-search reference value ' OR '1'='1' -- followed by a trailing space.",
+    "Observe order-b-001, including its test shipping address and line items, in the response to A. Correlate the result with the query captured by the test operator."
+  ],
+  "impact": "A regular customer can read another customer's private order records by changing the search query's structure. Cross-customer disclosure was demonstrated. Database writes, credential disclosure, server code execution, and database-wide access were not tested or assumed.",
+  "evidence": [
+    "Synthetic query-construction excerpt: sql = \"SELECT id, customer_id, shipping_address, line_items FROM orders WHERE customer_id = '\" + current_user.id + \"' AND order_reference = '\" + reference + \"'\". The reference is not bound as a parameter.",
+    "Operator-captured query: SELECT id, customer_id, shipping_address, line_items FROM orders WHERE customer_id = 'A' AND order_reference = '' OR '1'='1' -- '. The injected predicate returns rows outside A's ownership restriction.",
+    "Response to A includes {\"id\": \"order-b-001\", \"customer_id\": \"B\", \"shipping_address\": \"B's test address\", \"line_items\": [\"B's test item\"]}.",
+    "Control request by A using B's normal order reference returns an empty result. The application performs no additional ownership filtering after executing the query."
+  ],
+  "context": {
+    "environment": "Synthetic, authorized test application and disposable database containing fixture data only",
+    "intended_policy": "Customers may search and read only their own orders",
+    "attacker_access": "Regular customer account and control over the order-search reference value",
+    "known_mitigations": "The database account is read-only and restricted to the orders table; this limits writes but does not prevent the demonstrated disclosure",
+    "scope_of_evidence": "Only read access to fixture orders was tested; no destructive statements or access to other tables was attempted"
+  }
+}

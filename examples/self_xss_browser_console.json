@@ -1,0 +1,24 @@
+{
+  "title": "Claimed XSS requires pasting JavaScript into the user's own console",
+  "description": "The finding agent reported XSS after manually pasting JavaScript into its own browser developer console. It did not identify an attacker-controlled application input that executes in another user's session. Checks of the proposed profile-field delivery route show that its content is rendered as escaped text.",
+  "exploitation_steps": [
+    "Sign in as account A, open the browser developer console, and manually execute window.__jevai_xss_marker='local-only'.",
+    "Observe the marker in A's own browser session after the local console command executes.",
+    "Place <img src=x onerror=\"window.__jevai_xss_marker='profile-test'\"> in A's profile text and view that profile from account B's separate browser session.",
+    "Observe the literal profile text in B's page, no injected img element, and no marker execution. Also confirm that the candidate URL fragment is displayed as text and does not execute."
+  ],
+  "impact": "The agent claims account takeover because JavaScript can run in a logged-in browser. The documented execution occurs only when the same user manually runs code in their own developer console. The tested application inputs do not deliver executable code to another user, and no unauthorized data access or action was demonstrated.",
+  "evidence": [
+    "The local marker appears only after the operator manually pastes and runs the console command. Ordinary page navigation does not create it.",
+    "Profile rendering excerpt: profileElement.textContent = profile.description. The stored HTML-like value is displayed as literal text.",
+    "Separate account B session: no injected img node exists, window.__jevai_xss_marker is undefined, and the profile text is visible unchanged.",
+    "The candidate URL-fragment rendering path also uses textContent. No application input or normal victim action in the report results in attacker-controlled JavaScript execution."
+  ],
+  "context": {
+    "environment": "Synthetic, authorized test application with separate browser sessions",
+    "intended_policy": "Users may execute code locally in their own developer tools; application content from other users must remain inert",
+    "attacker_access": "Control of their own account, profile text, and browser console",
+    "known_mitigations": "The tested profile and URL-fragment paths render untrusted strings using textContent",
+    "scope_of_evidence": "This report evaluates the claimed console/profile/fragment routes only; it does not establish that every application input is safe"
+  }
+}
